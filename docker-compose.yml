@@ -1,0 +1,17 @@
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.3
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./keycloak/realm-warrant.json:/opt/keycloak/data/import/realm-warrant.json:ro
+
+  openfga:
+    image: openfga/openfga:v1.8.13
+    command: ["run", "--check-query-cache-enabled=false"]
+    ports:
+      - "8081:8080"

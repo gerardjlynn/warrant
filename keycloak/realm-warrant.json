@@ -1,0 +1,61 @@
+{
+  "realm": "warrant",
+  "enabled": true,
+  "accessTokenLifespan": 600,
+  "users": [
+    {
+      "username": "rep-alice",
+      "enabled": true,
+      "email": "alice@example.com",
+      "emailVerified": true,
+      "firstName": "Alice",
+      "lastName": "Rep",
+      "credentials": [
+        { "type": "password", "value": "alice", "temporary": false }
+      ]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "rep-cli",
+      "name": "Rep CLI",
+      "enabled": true,
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": false,
+      "protocolMappers": [
+        {
+          "name": "aud-warrant-agent",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "warrant-agent",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "orders-api",
+      "name": "Orders API (resource server)",
+      "enabled": true,
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false
+    }
+  ],
+  "clientScopes": [
+    {
+      "name": "orders:read",
+      "protocol": "openid-connect",
+      "attributes": { "include.in.token.scope": "true" }
+    },
+    {
+      "name": "refunds:issue",
+      "protocol": "openid-connect",
+      "attributes": { "include.in.token.scope": "true" }
+    }
+  ]
+}

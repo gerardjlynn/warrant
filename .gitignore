@@ -1,0 +1,7 @@
+vault/
+.env.generated
+.env
+__pycache__/
+*.pyc
+.venv/
+audit.log.jsonl

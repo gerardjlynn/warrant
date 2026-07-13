@@ -1,0 +1,6 @@
+requests
+fastapi
+uvicorn
+PyJWT[crypto]
+mcp
+anthropic[mcp]
