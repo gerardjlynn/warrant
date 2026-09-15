@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Grants — warrant{% endblock %}
+{% block body %}
+<h1>Grants you have a standing in</h1>
+<p class="sub">Every request you proposed, may revise, are named in, or are asked
+to answer.</p>
+
+{% if not grants %}
+  <div class="notice">Nothing here yet. A grant appears once someone proposes
+  one that names you.</div>
+{% endif %}
+
+<ul class="plain">
+{% for g in grants %}
+  <li class="row">
+    <span class="dot {% if g.authority %}on{% endif %}"
+          title="{% if g.authority %}the agent can act under this grant{% else %}the agent cannot act under this grant{% endif %}"></span>
+    <div style="flex:1">
+      <a href="/surface/grants/{{ g.grant_id }}"><strong>{{ g.grant_id }}</strong></a>
+      <span class="state {{ g.state }}">{{ g.state }}</span>
+      {% if g.needs_you %}<span class="tag you">your answer</span>{% endif %}
+      <div class="note" style="margin:.25rem 0 0">
+        {{ g.condition_text }} · account:{{ g.account }}
+        {%- if g.awaiting %} · waiting on {{ g.awaiting|join(', ') }}{% endif %}
+      </div>
+      <div class="note">you are {{ g.roles|join(', ') }}</div>
+    </div>
+  </li>
+{% endfor %}
+</ul>
+{% endblock %}

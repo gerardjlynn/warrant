@@ -2,5 +2,7 @@ requests
 fastapi
 uvicorn
 PyJWT[crypto]
-mcp
+mcp>=2
 anthropic[mcp]
+pytest
+jinja2

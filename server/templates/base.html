@@ -1,0 +1,99 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}warrant{% endblock %}</title>
+<style>
+  :root { color-scheme: light dark; --line:#d6d3cd; --dim:#6b6862; --bg:#fbfaf8;
+          --fg:#1c1b19; --accent:#7a4b1e; }
+  @media (prefers-color-scheme: dark) {
+    :root { --line:#3a3733; --dim:#9a958c; --bg:#171614; --fg:#e9e6e0;
+            --accent:#d9a066; }
+  }
+  body { background:var(--bg); color:var(--fg); margin:0;
+         font:15px/1.55 ui-serif, Georgia, serif; }
+  main { max-width:44rem; margin:0 auto; padding:2rem 1.25rem 4rem; }
+  a { color:var(--accent); }
+  h1 { font-size:1.4rem; margin:0 0 .25rem; }
+  h2 { font-size:1rem; margin:2rem 0 .5rem; letter-spacing:.04em;
+       text-transform:uppercase; color:var(--dim); font-weight:600; }
+  code, .mono { font-family:ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size:.85em; }
+  .sub { color:var(--dim); margin:0 0 1.5rem; }
+  .state { display:inline-block; padding:.1rem .5rem; border:1px solid var(--line);
+           border-radius:.2rem; font-size:.8rem; letter-spacing:.03em; }
+  .effective { border-color:#3f7a3f; color:#3f7a3f; }
+  .blocked, .deny { border-color:#a33; color:#a33; }
+  .closed { color:var(--dim); }
+  table { border-collapse:collapse; width:100%; margin:.5rem 0; }
+  td, th { text-align:left; padding:.35rem .5rem; border-bottom:1px solid var(--line);
+           font-size:.9rem; vertical-align:top; }
+  th { color:var(--dim); font-weight:600; }
+  .terms { border:1px solid var(--line); border-radius:.3rem; padding:1rem 1.25rem;
+           background:color-mix(in srgb, var(--fg) 3%, var(--bg)); }
+  .terms dt { color:var(--dim); font-size:.78rem; text-transform:uppercase;
+              letter-spacing:.04em; margin-top:.75rem; }
+  .terms dt:first-child { margin-top:0; }
+  .terms dd { margin:.15rem 0 0; }
+  .asof { margin-top:1rem; padding-top:.75rem; border-top:1px dashed var(--line);
+          color:var(--dim); font-size:.85rem; }
+  form.act { margin-top:1rem; display:flex; gap:.5rem; flex-wrap:wrap;
+             align-items:center; }
+  input[type=text] { flex:1; min-width:14rem; padding:.4rem .5rem;
+                     border:1px solid var(--line); border-radius:.2rem;
+                     background:var(--bg); color:var(--fg); font:inherit;
+                     font-size:.9rem; }
+  button { padding:.4rem .8rem; border:1px solid var(--line); border-radius:.2rem;
+           background:var(--bg); color:var(--fg); font:inherit; font-size:.9rem;
+           cursor:pointer; }
+  button:hover { border-color:var(--accent); color:var(--accent); }
+  .notice { border-left:3px solid var(--accent); padding:.5rem .85rem;
+            margin:1rem 0; background:color-mix(in srgb, var(--accent) 8%, var(--bg)); }
+  .notice.deny { border-left-color:#a33;
+                 background:color-mix(in srgb, #a33 8%, var(--bg)); }
+  ul.plain { list-style:none; padding:0; }
+  ul.plain li { padding:.5rem 0; border-bottom:1px solid var(--line); }
+  footer { margin-top:3rem; padding-top:1rem; border-top:1px solid var(--line);
+           color:var(--dim); font-size:.82rem; }
+
+  /* The consequence, stated before any of the machinery that decides it. */
+  .authority { display:flex; gap:.7rem; align-items:flex-start; padding:.9rem 1.1rem;
+               border:1px solid var(--line); border-radius:.3rem; margin:.5rem 0 1.5rem; }
+  .authority.on  { border-color:#3f7a3f;
+                   background:color-mix(in srgb, #3f7a3f 9%, var(--bg)); }
+  .authority.off { background:color-mix(in srgb, var(--fg) 4%, var(--bg)); }
+  .authority .dot { width:.62rem; height:.62rem; border-radius:50%; margin-top:.42rem;
+                    flex:none; background:var(--dim); }
+  .authority.on .dot { background:#3f7a3f; box-shadow:0 0 0 4px color-mix(in srgb,#3f7a3f 22%,transparent); }
+  .authority strong { display:block; font-size:1.02rem; }
+  .authority span { color:var(--dim); font-size:.87rem; }
+
+  /* Who stands where, on these terms. */
+  ul.agree { list-style:none; padding:0; margin:.4rem 0; }
+  ul.agree li { display:flex; gap:.6rem; align-items:baseline; padding:.42rem 0;
+                border-bottom:1px solid var(--line); }
+  .mark { flex:none; width:1.1rem; text-align:center; font-weight:700; }
+  .mark.yes { color:#3f7a3f; }
+  .mark.no { color:#a33; }
+  .mark.waiting { color:var(--dim); }
+  .who { min-width:7rem; }
+  .note { color:var(--dim); font-size:.85rem; }
+  .tag { font-size:.7rem; letter-spacing:.05em; text-transform:uppercase;
+         border:1px solid var(--line); border-radius:.2rem; padding:0 .3rem;
+         color:var(--dim); }
+  .calls td { font-size:.85rem; }
+  .calls .allow { color:#3f7a3f; }
+  ul.plain li.row { display:flex; gap:.75rem; align-items:flex-start; }
+  li.row .dot { width:.55rem; height:.55rem; border-radius:50%; margin-top:.5rem;
+                flex:none; background:var(--dim); opacity:.45; }
+  li.row .dot.on { background:#3f7a3f; opacity:1;
+                   box-shadow:0 0 0 3px color-mix(in srgb,#3f7a3f 22%,transparent); }
+  .tag.you { border-color:var(--accent); color:var(--accent); }
+</style>
+<main>
+{% block body %}{% endblock %}
+<footer>
+  {% if username %}signed in as <strong>{{ username }}</strong> ·
+  <a href="/surface/logout">sign out</a> ·{% endif %}
+  <a href="/surface">all grants</a>
+</footer>
+</main>

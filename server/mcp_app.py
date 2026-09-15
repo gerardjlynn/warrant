@@ -6,15 +6,18 @@ model. Denials are returned as structured tool results (not exceptions) so
 the agent can explain them to the rep.
 """
 
-from mcp.server.fastmcp import Context, FastMCP
+from mcp.server import MCPServer
+from mcp.server.mcpserver import Context
 
 from . import core
 
-mcp = FastMCP("warrant-orders", host="127.0.0.1", port=8091)
+HOST, PORT = "127.0.0.1", 8091
+
+mcp = MCPServer("warrant-orders")
 
 
 def _call(fn, ctx: Context, **params):
-    authorization = ctx.request_context.request.headers.get("authorization")
+    authorization = (ctx.headers or {}).get("authorization")
     try:
         return fn(authorization, **params)
     except core.ToolDenied as e:
@@ -42,4 +45,4 @@ def issue_refund(order_id: str, amount_cents: int, ctx: Context) -> dict:
 
 
 if __name__ == "__main__":
-    mcp.run(transport="streamable-http")
+    mcp.run(transport="streamable-http", host=HOST, port=PORT)

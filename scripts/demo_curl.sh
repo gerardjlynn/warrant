@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Saturday PM curl test: the four demo outcomes plus a pre-PDP failure,
+# Curl smoke test: the Act I outcomes plus a pre-PDP failure,
 # no agent involved. Server must be running (make server).
 set -euo pipefail
 cd "$(dirname "$0")/.."

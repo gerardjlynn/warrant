@@ -26,4 +26,14 @@ ISSUER = f"{KC_URL}/realms/{KC_REALM}"
 JWKS_URL = f"{ISSUER}/protocol/openid-connect/certs"
 AUDIENCE = "orders-api"
 AGENT_CLIENT_ID = ENV["KC_AGENT_CLIENT_ID"]
+
+# The register's authenticated door. A grantor's act is authenticated against a
+# token minted for the register alone: a separate audience from orders-api, and
+# a separate client from the one the agent holds a rep token for, so neither the
+# delegated token nor the rep login used in token exchange can be replayed to
+# cast that rep's approval.
+REGISTER_AUDIENCE = "grant-register"
+GRANTOR_CLIENT_ID = "grantor-cli"
+
 AUDIT_LOG = ROOT / "audit.log.jsonl"
+REGISTER_LOG = ROOT / "register.log.jsonl"

@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}{{ grant_id }} — warrant{% endblock %}
+{% block body %}
+<h1>{{ grant_id }} <span class="state {{ state }}">{{ state }}</span></h1>
+<p class="sub">Proposed by {{ request.proposed_by }}. You are
+{{ roles|join(', ') }}.</p>
+
+{% if notice %}<div class="notice{% if notice_deny %} deny{% endif %}">{{ notice }}</div>{% endif %}
+
+<div class="authority {% if authority %}on{% else %}off{% endif %}">
+  <div class="dot"></div>
+  <div>
+    {% if authority %}
+      <strong>The agent can act under this grant right now.</strong>
+      <span>{{ authority_scope }} on account:{{ request.account }}, on behalf of
+      {{ request.principal|join(', ') }}{% if cap %}, refunds up to {{ cap }}{% endif %}.</span>
+    {% else %}
+      <strong>The agent cannot act under this grant.</strong>
+      <span>{% if closed %}The request was retired.
+      {%- elif state == 'blocked' %}Someone answered, and the answer was no.
+      {%- else %}Not everyone the condition names has agreed yet.{% endif %}
+      Its next call fails at the policy engine, whatever its token says.</span>
+    {% endif %}
+  </div>
+</div>
+
+<h2>Where it stands</h2>
+<ul class="agree">
+{% for a in agreement %}
+  <li>
+    <span class="mark {{ a.mark }}">{% if a.mark == 'yes' %}&check;{% elif a.mark == 'no' %}&times;{% else %}&middot;{% endif %}</span>
+    <span class="who">{{ a.who }}</span>
+    <span>{{ a.status }}{% if a.veto %} <span class="tag">veto</span>{% endif %}
+      {%- if a.superseded %} <span class="note">— answered an earlier revision, which no longer counts</span>
+      {%- elif a.reason %} <span class="note">— {{ a.reason }}</span>{% endif %}</span>
+  </li>
+{% endfor %}
+</ul>
+<p class="note">{{ condition_text }}.
+{%- if awaiting %} Silence is not assent: nothing happens until
+{{ awaiting|join(' and ') }} answer{% if awaiting|length == 1 %}s{% endif %}.{% endif %}</p>
+
+<h2>The terms</h2>
+<div class="terms">
+  <dl>
+    <dt>What the agent may do</dt>
+    <dd>{{ request.action_scope|join(', ') }} on account:{{ request.account }}
+        as <span class="mono">{{ request.actor }}</span></dd>
+    <dt>On whose behalf</dt>
+    <dd>{{ request.principal|join(', ') }}</dd>
+    {% if cap %}
+    <dt>Ceiling</dt>
+    <dd>refunds up to {{ cap }} per call</dd>
+    {% endif %}
+    <dt>Who has to agree</dt>
+    <dd>{{ condition_text }}</dd>
+    {% if request.veto %}
+    <dt>Veto</dt>
+    <dd>{{ request.veto|join(', ') }} — a standing refusal from any of them
+        blocks the grant whatever the condition says, and survives a revision
+        until withdrawn</dd>
+    {% endif %}
+  </dl>
+  <div class="asof">
+    You are reading these terms as of revision
+    <span class="mono">{{ revision }}</span>. An answer binds to this revision
+    and to nothing else; if the terms change before you send it, you will be
+    asked again against the new ones.
+  </div>
+</div>
+
+{% if decisions %}
+<h2>What the agent's calls got</h2>
+<table class="calls">
+  <tr><th>call</th><th>decision</th><th>grant was</th></tr>
+  {% for d in decisions %}
+  <tr>
+    <td class="mono">{{ d.action }}</td>
+    <td class="{{ 'allow' if d.decision == 'allow' else 'deny' }}">{{ d.reason }}</td>
+    <td>{{ d.state }}</td>
+  </tr>
+  {% endfor %}
+</table>
+<p class="note">From the call log. This page cannot make such a call — it holds
+your token, never the agent's.</p>
+{% endif %}
+
+<h2>The record</h2>
+{% if standing %}
+<table>
+  <tr><th>person</th><th>answer</th><th>on revision</th><th>how</th><th>reason</th></tr>
+  {% for a in standing %}
+  <tr>
+    <td>{{ a.grantor }}</td>
+    <td>{{ a.type }}{% if a.stale %} <span class="sub">(earlier revision)</span>{% endif %}</td>
+    <td class="mono">{{ a.grant_revision }}</td>
+    <td class="mono">{{ a.via }}</td>
+    <td>{{ a.reason or '' }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="sub">Nobody has answered yet.</p>
+{% endif %}
+{% if awaiting %}<p class="sub">Not yet heard from: {{ awaiting|join(', ') }}.</p>{% endif %}
+
+{% if closed %}
+<div class="notice">Retired by {{ closed.by }}{% if closed.reason %}:
+{{ closed.reason }}{% endif %}. Nothing further can happen to it; wanting
+different terms now means a new request.</div>
+{% else %}
+
+{% if can_act %}
+<h2>Your answer</h2>
+<form class="act" method="post" action="/surface/grants/{{ grant_id }}/acts">
+  <input type="hidden" name="grant_revision" value="{{ revision }}">
+  <input type="text" name="reason" placeholder="why (optional, recorded with your answer)">
+  <button name="act_type" value="approve">Approve</button>
+  <button name="act_type" value="refuse">Refuse</button>
+  {% if has_standing %}<button name="act_type" value="withdraw">Withdraw mine</button>{% endif %}
+</form>
+{% elif "grantor" not in roles %}
+<p class="sub">You are not asked to answer this one — only the people the
+condition names can.</p>
+{% endif %}
+
+{% if can_close %}
+<h2>Retire the request</h2>
+<form class="act" method="post" action="/surface/grants/{{ grant_id }}/close">
+  <input type="text" name="reason" placeholder="why it is being retired">
+  <button>Close</button>
+</form>
+<p class="sub">Closing ends the request rather than answering it. If the grant
+is effective this also ends the agent's authority, on the next call.</p>
+{% endif %}
+
+{% endif %}
+{% endblock %}

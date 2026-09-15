@@ -1,15 +1,94 @@
 #!/usr/bin/env python3
 """Replay audit.log.jsonl and print the observability report: decisions by
 action and reason, decisive policy checks, scope sprawl, delegation-chain
-anomalies, and the kill-switch proof. Read-only — this is reporting, not
-benchmarking (controlled latency percentiles live in bench_authz.py)."""
+anomalies, the life of each delegation, and the kill-switch proof. Read-only --
+this is reporting, not benchmarking (controlled latency percentiles live in
+bench_authz.py).
+
+The delegation section reads both logs. That pairing is the claim: the register
+log shows authority being assembled from several people and taken apart by one
+of them, and the call log shows the agent's access appearing and disappearing in
+step with it. Neither log makes the point alone.
+"""
 
 import json
 import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
-LOG = Path(__file__).resolve().parent.parent / "audit.log.jsonl"
+ROOT = Path(__file__).resolve().parent.parent
+LOG = ROOT / "audit.log.jsonl"
+REGISTER_LOG = ROOT / "register.log.jsonl"
+
+
+def delegations(events: list[dict]) -> None:
+    """For each delegation: who granted it, on which revision, when it became
+    effective, who ended it, and how many calls happened in between."""
+    if not REGISTER_LOG.exists():
+        return
+    entries = [json.loads(l) for l in REGISTER_LOG.read_text().splitlines()
+               if l.strip()]
+    if not entries:
+        return
+
+    print("\n== delegations: how each one was assembled and unmade ==")
+    calls = defaultdict(list)
+    for e in events:
+        if e.get("delegation_id"):
+            calls[e["delegation_id"]].append(e)
+
+    for grant_id in dict.fromkeys(e["grant_id"] for e in entries
+                                  if e.get("grant_id")):
+        own = [e for e in entries if e.get("grant_id") == grant_id]
+        proposed = next((e for e in own if e["type"] == "grant_proposed"), None)
+        if proposed is None:
+            continue
+        request = proposed["request"]
+        cond = request["condition"]
+        named = cond.get("grantor") or ", ".join(cond.get("grantors", []))
+        shape = (f"{cond['op']}({named})"
+                 + (f" veto[{', '.join(request['veto'])}]" if request["veto"]
+                    else ""))
+        print(f"\n  {grant_id}: {shape} on account:{request['account']}")
+        print(f"    proposed by {proposed['grantor']} "
+              f"({proposed['grant_revision']}, "
+              f"via={proposed.get('via', 'operator')})")
+
+        # In log order, so the sequence reads as it happened: an approval that
+        # stopped counting because the terms changed under it is only legible
+        # next to the revision that changed them.
+        latency = None
+        for e in own:
+            t, via = e["type"], e.get("via", "operator")
+            if t == "tuple_written" or t == "tuple_deleted":
+                latency = e.get("tuple_write_latency_ms")
+            elif t == "act_recorded":
+                why = f'  "{e["act_reason"]}"' if e.get("act_reason") else ""
+                print(f"    {e['grantor']:<10} {e['act_type']:<9} "
+                      f"on {e['grant_revision']} via={via}{why}")
+            elif t == "revision_superseded":
+                print(f"    {e['grantor']:<10} revised    "
+                      f"{e['from_revision']} -> {e['grant_revision']} via={via}"
+                      "   (acts bound to the old revision stop counting)")
+            elif t == "grant_became_effective":
+                print(f"    {'':<10} -> effective on {e['grantor']}'s act"
+                      + (f", tuple written in {latency}ms" if latency else ""))
+            elif t == "grant_ceased_to_be_effective":
+                print(f"    {'':<10} -> {e['state']} on {e['grantor']}'s act"
+                      + (f", tuple deleted in {latency}ms" if latency else ""))
+            elif t == "grant_closed":
+                why = f": {e['close_reason']}" if e.get("close_reason") else ""
+                print(f"    {'':<10} -> closed by {e['grantor']}{why}")
+
+        mine = calls[grant_id]
+        allowed = sum(1 for e in mine if e["decision"] == "allow")
+        print(f"    {len(mine)} call(s) decided against it: "
+              f"{allowed} allowed, {len(mine) - allowed} denied")
+        states = Counter(e.get("grant_state_at_decision") for e in mine
+                         if e["decision"] == "deny")
+        if states:
+            print("    denials by grant state at decision: "
+                  + ", ".join(f"{k}={v}" for k, v in sorted(states.items())))
 
 
 def main() -> None:
@@ -69,6 +148,8 @@ def main() -> None:
         print("\n== authz latency observed in this log ==")
         print(f"  n={len(lat)}  p50={pct(50)}ms  p95={pct(95)}ms  max={lat[-1]}ms")
         print("  (controlled percentiles: scripts/bench_authz.py)")
+
+    delegations(events)
 
     print("\n== kill-switch proof ==")
     proof = [e for e in events if e.get("reason") == "delegation_revoked"

@@ -1,4 +1,4 @@
-.PHONY: up bootstrap token down
+.PHONY: up bootstrap token test down surface walkthrough try-refund
 
 VENV = .venv/bin
 
@@ -16,6 +16,17 @@ token:
 	./scripts/get_delegated_token.sh
 
 server: $(VENV)/python
+	$(VENV)/uvicorn server.app:app --port 8090
+
+walkthrough: $(VENV)/python
+	@$(VENV)/python scripts/walkthrough.py
+
+try-refund:
+	@./scripts/try_refund.sh
+
+surface: $(VENV)/python
+	@echo "authoring surface: http://localhost:8090/surface"
+	@echo "sign in as rep-alice/alice or rep-bob/bob"
 	$(VENV)/uvicorn server.app:app --port 8090
 
 mcp-server: $(VENV)/python
@@ -36,5 +47,9 @@ audit-report:
 bench:
 	$(VENV)/python scripts/bench_authz.py
 
+test: $(VENV)/python
+	$(VENV)/python -m pytest tests/ -q
+
 down:
 	docker compose down -v
+

@@ -1,6 +1,14 @@
 .venv/bin/python agent/run_demo.py
-obtained delegated token: sub=rep-alice, act.sub=warrant-agent, delegation_id=dlg-123, scopes=[orders:read refunds:issue]
+starting MCP tool server on :8091 ...
+starting orders-api (register door) on :8090 ...
+obtained delegated token: sub=rep-alice, act.sub=warrant-agent, scopes=[orders:read refunds:issue]
+no delegation_id claim — the resource server resolves the applicable delegation per call by reading the register
 connected to MCP server; tools: ['get_order', 'list_orders', 'issue_refund']
+
+
+===============================================
+ACT I — one grantor (dlg-123: named(rep-alice))
+===============================================
 
 rep> Please refund order 1042 for $40.
 
@@ -12,20 +20,16 @@ agent> I'll process that refund for you right away.
   "amount_cents": 4000
 }
 
-agent> Done! I've refunded $40.00 to order 1042. The refund ID is **rf_0001**. Is there anything else I can help you with?
+agent> Done! I've refunded $40.00 to order 1042. The refund ID is rf_0001. Is there anything else I can help you with?
 
 rep> Now refund order 2077 for $900.
-
-agent> I'll process that refund now.
   [tool call]   issue_refund {"order_id": "2077", "amount_cents": 90000}
   [tool result] {
   "denied": true,
   "reason": "over_refund_cap"
 }
 
-agent> That refund was denied. The reason given was: **over_refund_cap** — the $900.00 amount exceeds the allowed refund limit.
-
-Let me know how you'd like to proceed.
+agent> That refund was denied. Reason: the amount exceeds the refund cap (over_refund_cap). I'm unable to process the $900 refund on order 2077. Let me know how you'd like to proceed.
 
 rep> List the orders for account globex.
   [tool call]   list_orders {"account_id": "globex"}
@@ -34,24 +38,126 @@ rep> List the orders for account globex.
   "reason": "rep_not_assigned"
 }
 
-agent> That request was denied. The reason given was: **rep_not_assigned** — you're not assigned to the globex account, so I can't list its orders.
+agent> That request was denied. Reason: you're not assigned to that account (rep_not_assigned). I can't list orders for account globex. Is there anything else I can help with?
 
-Let me know if there's anything else I can help with.
-
-=== KILL SWITCH: operator revokes dlg-123 mid-session (the agent's JWT is still unexpired) ===
-revoked dlg-123: deleted [delegation:dlg-123 active_delegation account:acme]
+=== KILL SWITCH: rep-alice withdraws her approval of dlg-123 mid-session (the agent's JWT is still unexpired) ===
+revoked dlg-123: rep-alice withdrew their approval on rev_04b9733a990d (via=token, authenticated by grantor-cli); grant is now pending, active_delegation tuple deleted in 5.2ms
 
 rep> Refund order 1042 for another $15.
 
-agent> I'll process that additional refund now.
+agent> I'll process that additional refund.
   [tool call]   issue_refund {"order_id": "1042", "amount_cents": 1500}
   [tool result] {
   "denied": true,
   "reason": "delegation_revoked"
 }
 
-agent> That refund was denied. The reason given was: **delegation_revoked** — the delegated authority I was acting under has been revoked, so I can no longer perform actions on your behalf.
+agent> That refund was denied. Reason: your delegated authority has been revoked (delegation_revoked). I'm unable to process the additional $15 refund on order 1042 right now. You may need to have your authorization restored before I can take further actions.
 
-You'll likely need to have delegation re-established before I can process any further requests. Let me know if there's anything else.
 
-demo complete — see audit.log.jsonl for the decision trail
+=======================================
+ACT II — authority that took two people
+=======================================
+
+-- the same grant, revised to require Bob as well. Acts bind to a
+   revision, so Alice's approval does not survive one: authority
+   stops the moment the terms change, not when someone gets round
+   to re-approving.
+  [register]    rep-alice revises dlg-123: all_of(rep-alice, rep-bob) — state: pending, awaiting: ['rep-alice', 'rep-bob']
+
+rep> Refund order 1042 for $20.
+  [tool call]   issue_refund {"order_id": "1042", "amount_cents": 2000}
+  [tool result] {
+  "denied": true,
+  "reason": "delegation_revoked"
+}
+
+agent> That refund was denied. Reason: your delegated authority has been revoked (delegation_revoked). I'm unable to process the $20 refund on order 1042. Your authorization will need to be restored before I can take further actions.
+
+-- Alice re-approves on the new terms. Still pending: silence is
+   not assent, and there are no timers.
+  [register]    rep-alice approves dlg-123 — state: pending, awaiting: ['rep-bob']
+
+-- Bob answers. The register writes the tuple, and the grant
+   becomes effective on his act rather than on any clock.
+  [register]    rep-bob approves dlg-123 — state: effective
+
+rep> Try that $20 refund on order 1042 again.
+  [tool call]   issue_refund {"order_id": "1042", "amount_cents": 2000}
+  [tool result] {
+  "refund_id": "rf_0002",
+  "order_id": "1042",
+  "amount_cents": 2000
+}
+
+agent> Done! This time it went through. I've refunded $20.00 to order 1042. The refund ID is rf_0002. Anything else I can help with?
+
+-- Bob takes it back. Authority established by two people, ended
+   by one of them, with the agent's JWT still unexpired.
+  [register]    rep-bob withdraws dlg-123 — state: pending, awaiting: ['rep-bob']
+
+rep> Refund order 1042 for another $5.
+  [tool call]   issue_refund {"order_id": "1042", "amount_cents": 500}
+  [tool result] {
+  "denied": true,
+  "reason": "delegation_revoked"
+}
+
+agent> That refund was denied. Reason: your delegated authority has been revoked (delegation_revoked). I'm unable to process the additional $5 refund on order 1042 right now. Let me know if there's anything else I can help with.
+
+-- A second grant is raised over the same account before the first
+   is retired. Two apply, nothing chooses between them, and every
+   call on the account dies -- the failure that made a way to close
+   a request the thing to build first.
+  [register]    rep-alice proposes dlg-200: any_of(rep-alice, rep-bob), veto: [rep-alice] — state: pending, awaiting: ['rep-alice', 'rep-bob']
+
+rep> Refund order 2077 for $30.
+  [tool call]   issue_refund {"order_id": "2077", "amount_cents": 3000}
+  [tool result] {
+  "denied": true,
+  "reason": "ambiguous_delegation"
+}
+
+agent> That refund was denied. Reason: ambiguous_delegation — your delegated authority couldn't be clearly resolved for this action. I'm unable to process the $30 refund on order 2077. You may need to have your authorization clarified before I can proceed. Anything else I can help with?
+
+-- Cancel and redo, the ordinary answer. Closing retires the
+   request; it is not a refusal and not a withdrawal.
+  [register]    rep-alice closes dlg-123 (superseded by dlg-200) — state: closed
+
+-- Bob approves dlg-200, which satisfies any_of on its own.
+  [register]    rep-bob approves dlg-200 — state: effective, awaiting: ['rep-alice']
+
+-- and Alice, who holds the veto, refuses. The condition is still
+   satisfied. The grant is blocked anyway, and blocked reads
+   differently in the log from nobody having answered.
+  [register]    rep-alice refuses dlg-200 — state: blocked
+
+rep> Refund order 2077 for $30 again.
+  [tool call]   issue_refund {"order_id": "2077", "amount_cents": 3000}
+  [tool result] {
+  "denied": true,
+  "reason": "delegation_revoked"
+}
+
+agent> That refund was denied again. Reason: your delegated authority has been revoked (delegation_revoked). I'm unable to process the $30 refund on order 2077. Your authorization will need to be restored before I can proceed. Let me know if there's anything else.
+
+-- Alice revises the terms. Her refusal was recorded on the old
+   revision and it survives, because a veto member's refusal is the
+   one act that travels. Revising is not a way around it.
+  [register]    rep-alice revises dlg-200: refund cap lowered to $250 — state: blocked, awaiting: ['rep-bob']
+
+rep> Try the $30 refund on order 2077 once more.
+  [tool call]   issue_refund {"order_id": "2077", "amount_cents": 3000}
+  [tool result] {
+  "denied": true,
+  "reason": "delegation_revoked"
+}
+
+agent> Still denied. Reason: your delegated authority has been revoked (delegation_revoked). I'm unable to process the $30 refund on order 2077. Your authorization will need to be restored before I can take further actions. Let me know if there's anything else I can help with.
+
+-- and the blocked request is retired in its turn, so the account
+   is left carrying nothing stale. That is the whole of the answer
+   to a grantor who has left: cancel, and raise a new one.
+  [register]    rep-alice closes dlg-200 (abandoned) — state: closed
+
+demo complete — audit.log.jsonl has the decision trail, register.log.jsonl has who agreed to what
