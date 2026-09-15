@@ -467,8 +467,29 @@ def phase_e_seed_grant() -> None:
     just written."""
     from server.register import EFFECTIVE, Register
 
+    seed_terms = dict(
+        principal=["rep-alice"], grantors=["rep-alice"],
+        actor=AGENT_CLIENT_ID, account="acme",
+        action_scope=["orders:read", "refunds:issue"],
+        call_time_conditions={"max_refund_cents": MAX_REFUND_CENTS},
+        condition={"op": "named", "grantor": "rep-alice"},
+    )
+
     reg = Register()
     grant_id = _seed_grant_id(reg.grants())
+
+    # A seed grant revised away from the seed terms -- `make walkthrough` makes it
+    # need both reps -- is not the starting state, and re-approving it as Alice
+    # would leave it pending on Bob. Revising it back would be the operator
+    # authoring terms in Alice's name. So it is retired like any grant that is no
+    # longer wanted, and the next seed id is proposed fresh.
+    if grant_id in reg.grants():
+        request = reg.grant(grant_id)["request"]
+        if any(request.get(k) != v for k, v in seed_terms.items()):
+            reg.close(grant_id, by=request["proposed_by"],
+                      reason="revised away from the seed terms by a previous run")
+            print(f"  closed {grant_id}, revised away from the seed terms")
+            grant_id = _seed_grant_id(reg.grants())
 
     # Retire anything a previous run left applicable on the account. Bootstrap's
     # job is to restore the starting state, and once grants can be retired the
@@ -483,14 +504,7 @@ def phase_e_seed_grant() -> None:
                       reason="left open by a previous run")
             print(f"  closed {other}, left open by a previous run")
     if grant_id not in reg.grants():
-        reg.propose(
-            grant_id, by="rep-alice",
-            principal=["rep-alice"], grantors=["rep-alice"],
-            actor=AGENT_CLIENT_ID, account="acme",
-            action_scope=["orders:read", "refunds:issue"],
-            call_time_conditions={"max_refund_cents": MAX_REFUND_CENTS},
-            condition={"op": "named", "grantor": "rep-alice"},
-        )
+        reg.propose(grant_id, by="rep-alice", **seed_terms)
         print(f"  proposed {grant_id}: named(rep-alice)")
     # Restores the graph tuples and the active_delegation tuple if the store was
     # wiped since the last run; a no-op otherwise.
