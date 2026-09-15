@@ -1,13 +1,21 @@
 """Load the bootstrap-generated environment."""
 
+import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
+# WARRANT_ENV_FILE exists for the test suite, which needs URL-shaped values and
+# nothing else: no test reaches Keycloak or OpenFGA. Everything that runs against
+# the real stack reads what bootstrap wrote.
+ENV_FILE = Path(os.environ.get("WARRANT_ENV_FILE", ROOT / ".env.generated"))
+
 
 def _load() -> dict:
+    if not ENV_FILE.exists():
+        raise SystemExit(f"{ENV_FILE} not found -- run `make bootstrap` first")
     env = {}
-    for line in (ROOT / ".env.generated").read_text().splitlines():
+    for line in ENV_FILE.read_text().splitlines():
         if "=" in line and not line.startswith("#"):
             k, v = line.split("=", 1)
             env[k] = v
