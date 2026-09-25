@@ -192,8 +192,8 @@ def ensure_servers() -> list[subprocess.Popen]:
     return [p for p in procs if p is not None]
 
 
-def revoke() -> None:
-    print("\n=== KILL SWITCH: rep-alice withdraws her approval of dlg-123 "
+def revoke(grant_id: str) -> None:
+    print(f"\n=== KILL SWITCH: rep-alice withdraws her approval of {grant_id} "
           "mid-session (the agent's JWT is still unexpired) ===")
     subprocess.run(
         [sys.executable, str(ROOT / "scripts" / "revoke_delegation.py")],
@@ -273,7 +273,7 @@ async def main() -> None:
             banner(f"ACT I — one grantor ({seed}: named(rep-alice))")
             for i, user_turn in enumerate(ACT_I):
                 if i == 3:
-                    revoke()
+                    revoke(seed)
                 await turn(user_turn)
 
             await act_two(door, seed, turn)

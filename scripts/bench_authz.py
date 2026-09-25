@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import requests
 
 from server import auth, pdp
+from server.register import Register
 from server.config import AGENT_CLIENT_ID, ENV, KC_REALM, KC_URL
 
 
@@ -61,16 +62,23 @@ def main() -> None:
 
     token = get_token()
     auth.validate(token)  # warm the JWKS cache before timing
+    # Whatever bootstrap seeded -- after a walkthrough it is not dlg-123.
+    ids = Register().applicable("rep-alice", AGENT_CLIENT_ID, "acme",
+                                "refunds:issue")
+    if len(ids) != 1:
+        sys.exit(f"expected one applicable delegation on acme, got {ids}. "
+                 "Run `make bootstrap` first.")
+    grant_id = ids[0]
     print(f"warrant authz benchmark — {n} iterations per case\n")
 
     report("jwt_validate (local JWKS)",
            timed(lambda: auth.validate(token), n))
     report("batch_check read (4 checks)",
            timed(lambda: pdp.batch_check(
-               "rep-alice", "warrant-agent", "acme", "dlg-123"), n))
+               "rep-alice", "warrant-agent", "acme", grant_id), n))
     report("batch_check refund (5 checks)",
            timed(lambda: pdp.batch_check(
-               "rep-alice", "warrant-agent", "acme", "dlg-123",
+               "rep-alice", "warrant-agent", "acme", grant_id,
                amount_cents=4000), n))
 
     print("\nall checks run with consistency=HIGHER_CONSISTENCY and the "

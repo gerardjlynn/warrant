@@ -38,7 +38,7 @@ call "4. list_orders globex (expect rep_not_assigned)"  list_orders  '{"account_
 call "5. garbage token (expect pre-PDP invalid_token)"  get_order    '{"order_id":"1042"}' "not-a-jwt"
 
 echo
-echo "== 6. kill switch: revoke dlg-123 mid-session =="
+echo "== 6. kill switch: revoke the delegation mid-session =="
 .venv/bin/python scripts/revoke_delegation.py
 
 call "7. refund 1042 for \$10, same token (expect delegation_revoked)" \

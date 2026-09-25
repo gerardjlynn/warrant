@@ -96,6 +96,12 @@ def test_binding_and_missing_act_still_answer_first():
         == "actor_binding_mismatch"
 
 
+def test_a_token_for_another_audience_is_refused():
+    """A grantor's register token is the one a person is most likely to be
+    holding, and it must not reach the tools."""
+    assert reason(token(aud="grant-register")) == "invalid_audience"
+
+
 def test_a_sibling_claim_inside_act_is_not_a_chain():
     """Only a nested `act` is a chain. Refusing anything else would reject
     ordinary tokens the moment a mapper adds a field."""

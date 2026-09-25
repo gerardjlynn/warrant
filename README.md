@@ -334,11 +334,14 @@ make try-refund   # one refund as the agent, with the decision that governed it
 make mcp-server   # optional: run the MCP server in the foreground yourself
 make server       # optional: REST surface on :8090
 make demo-curl    # the Act I outcomes via curl, no LLM required
+
+make test         # the test suite; needs no running stack and no API key
 ```
 
 `make bootstrap` is idempotent and restores the starting state — it re-approves
-a revoked grant, seeds a fresh one if the last was retired, and closes anything
-a half-finished run left applicable to the account — so `make bootstrap && make
+a revoked grant, retires a seed whose terms were revised (as `make walkthrough`
+does) and seeds a fresh one in its place, and closes anything a half-finished
+run left applicable to the account — so `make bootstrap && make
 demo` is the repeatable demo reset (the order store is in-memory per server
 process; the demo spawning its own server gets a fresh one each run).
 
@@ -414,8 +417,8 @@ cancel-and-redo · grantor-signed acts, so an approval is evidence rather than
 testimony and survives a realm administrator resetting a password ·
 hash-chained audit log — the same instinct, and they belong together; until
 both, the logs are append-only by convention, not tamper-evident · refund
-idempotency keys · the rest of the token-level security invariants (missing
-`act` denied, duplicate refund; wrong audience, `act.sub != azp` and revoked
+idempotency keys · the rest of the token-level security invariants (duplicate refund; wrong
+audience, missing `act`, `act.sub != azp`, a chained `act` and revoked
 delegation are covered) · order-state and remaining-refundable-amount rules ·
 RFC 9728 MCP discovery metadata · DPoP sender-constrained tokens.
 
