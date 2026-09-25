@@ -59,10 +59,10 @@ agent> That refund was denied. Reason: your delegated authority has been revoked
 ACT II — authority that took two people
 =======================================
 
--- the same grant, revised to require Bob as well. Acts bind to a
-   revision, so Alice's approval does not survive one: authority
-   stops the moment the terms change, not when someone gets round
-   to re-approving.
+-- the same grant, revised to require Bob as well. It is still
+   pending from Alice's withdrawal, and acts bind to a revision, so
+   the new terms start with nobody's approval standing: both of
+   them have to answer them.
   [register]    rep-alice revises dlg-123: all_of(rep-alice, rep-bob) — state: pending, awaiting: ['rep-alice', 'rep-bob']
 
 rep> Refund order 1042 for $20.

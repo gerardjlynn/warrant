@@ -312,10 +312,10 @@ def free_grant_id() -> str:
 async def act_two(door: RegisterDoor, seed: str, turn) -> None:
     banner("ACT II — authority that took two people")
 
-    print("\n-- the same grant, revised to require Bob as well. Acts bind to a\n"
-          "   revision, so Alice's approval does not survive one: authority\n"
-          "   stops the moment the terms change, not when someone gets round\n"
-          "   to re-approving.")
+    print("\n-- the same grant, revised to require Bob as well. It is still\n"
+          "   pending from Alice's withdrawal, and acts bind to a revision, so\n"
+          "   the new terms start with nobody's approval standing: both of\n"
+          "   them have to answer them.")
     door.revise(seed, ALICE, "all_of(rep-alice, rep-bob)",
                 grantors=[ALICE, BOB],
                 condition={"op": "all_of", "grantors": [ALICE, BOB]})

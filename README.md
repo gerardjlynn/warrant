@@ -121,13 +121,14 @@ rep> Try the $30 refund on order 2077 once more.
   [register]    rep-alice closes dlg-200 (abandoned) — state: closed
 ```
 
-Four things happen there that a single-approver design cannot express. Revising
-the terms drops the authority at once, because acts bind to a revision and none
-of them travels. The grant becomes effective on Bob's approval rather than on a
-clock. It ends on Bob's withdrawal, though it took two people to create. And the
-veto blocks a grant whose condition is *satisfied* — Bob's approval alone meets
-`any_of` — and goes on blocking it across a revision, because a veto member's
-refusal is the one act that does travel.
+Four things happen there that a single-approver design cannot express. The
+grant becomes effective on Bob's approval rather than on a clock. It ends on
+Bob's withdrawal, though it took two people to create. The veto blocks a grant
+whose condition is *satisfied* — Bob's approval alone meets `any_of` — and goes
+on blocking it across a revision, because a veto member's refusal is the one
+act that does travel. And that same revision shows the rule the veto is an
+exception to: Bob's approval does not travel. The register is awaiting him
+again, on terms he has not yet seen.
 
 The `ambiguous_delegation` in the middle is deliberate. A second grant was
 raised over the same account before the first was retired, and with the static
@@ -410,17 +411,34 @@ token exchange, and that login is good for neither.
 
 Proposing and revising from the surface — today they are API-only, because they
 need real forms and the surface answers grants rather than authoring them from
-scratch. Then: delegation-scoped credentials issued by the register (the token naming its
+scratch.
+
+Specified in v3.3 and not yet built: `lapse_after`, with a terminal `lapsed`
+state — the first clock in a design whose first rule forbids clocks, admissible
+because it only ever retires a grant that was never effective · distinctness,
+so one approval fills one slot: under `all_of(any_of(alice, bob), any_of(bob,
+carol))` Bob alone cannot satisfy both clauses, and a condition no assignment of
+distinct people could satisfy is rejected at proposal · act-bound limits, so an
+approval carries its own ceiling (`up_to` against a declared `ceiling_field`,
+`limited_to` against `action_scope`) rather than inheriting one from a person
+record, and an approval whose bound does not cover the terms counts as a refusal
+of them.
+
+Beyond those: delegation-scoped credentials issued by the register (the token naming its
 own grant, rather than the resource server resolving it) · succession declared
 at grant creation, so a grantor leaving is a substitution rather than a
 cancel-and-redo · grantor-signed acts, so an approval is evidence rather than
 testimony and survives a realm administrator resetting a password ·
 hash-chained audit log — the same instinct, and they belong together; until
 both, the logs are append-only by convention, not tamper-evident · refund
-idempotency keys · the rest of the token-level security invariants (duplicate refund; wrong
-audience, missing `act`, `act.sub != azp`, a chained `act` and revoked
-delegation are covered) · order-state and remaining-refundable-amount rules ·
+idempotency keys · the rest of the token-level security invariants —
+duplicate refund is still owed; wrong audience, missing `act`, `act.sub != azp`,
+a chained `act`, and a revoked delegation are covered · order-state and remaining-refundable-amount rules ·
 RFC 9728 MCP discovery metadata · DPoP sender-constrained tokens.
+
+## License
+
+MIT. See [`LICENSE`](LICENSE).
 
 ---
 
