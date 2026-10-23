@@ -1,10 +1,23 @@
 #!/usr/bin/env bash
 # Curl smoke test: the Act I outcomes plus a pre-PDP failure,
-# no agent involved. Server must be running (make server).
+# no agent involved. Starts the orders-api service on :8090 if it isn't
+# already serving, as `make demo` does, and stops it again on exit.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source .env.generated
 API=http://localhost:8090
+
+if ! curl -s -o /dev/null "$API/docs"; then
+  echo "starting orders-api on :8090 ..." >&2
+  .venv/bin/uvicorn server.app:app --port 8090 >/dev/null 2>&1 &
+  SERVER_PID=$!
+  trap 'kill $SERVER_PID 2>/dev/null; wait $SERVER_PID 2>/dev/null || true' EXIT
+  for _ in $(seq 80); do
+    curl -s -o /dev/null "$API/docs" && break
+    sleep 0.25
+  done
+  curl -s -o /dev/null "$API/docs" || { echo "could not start orders-api on :8090" >&2; exit 1; }
+fi
 
 get_api_token() {
   local rep_token

@@ -1,8 +1,8 @@
-requests
-fastapi
-uvicorn
-PyJWT[crypto]
-mcp>=2
-anthropic[mcp]
-pytest
-jinja2
+requests==2.34.2
+fastapi==0.161.1
+uvicorn==0.54.0
+PyJWT[crypto]==2.15.1
+mcp==2.3.0
+anthropic[mcp]==2.1.0
+pytest==9.1.1
+jinja2==3.1.6
