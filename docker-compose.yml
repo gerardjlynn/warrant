@@ -6,7 +6,7 @@ services:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     volumes:
       - ./keycloak/realm-warrant.json:/opt/keycloak/data/import/realm-warrant.json:ro
 
@@ -14,4 +14,4 @@ services:
     image: openfga/openfga:v1.8.13
     command: ["run", "--check-query-cache-enabled=false"]
     ports:
-      - "8081:8080"
+      - "127.0.0.1:8081:8080"
