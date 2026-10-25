@@ -135,6 +135,22 @@ def test_two_applicable_delegations_fail_closed(monkeypatch):
     assert rec.store_writes == []
 
 
+def test_an_unreachable_pdp_is_an_audited_deny_not_a_crash(monkeypatch):
+    rec = Recorder(monkeypatch)
+
+    def unavailable(**kwargs):
+        rec.batch_checks.append(kwargs)
+        raise core.pdp.PDPUnavailable("400 Bad Request: store not found")
+
+    monkeypatch.setattr(core.pdp, "batch_check", unavailable)
+    out = refund(rec)
+    assert isinstance(out, core.ToolDenied)
+    assert (out.status, out.reason) == (503, "pdp_unavailable")
+    assert rec.store_writes == []
+    assert rec.events[-1]["decision"] == "deny"
+    assert rec.events[-1]["reason"] == "pdp_unavailable"
+
+
 def test_pre_pdp_failures_never_reach_the_store(monkeypatch):
     """A bad token, a missing scope, a bad amount and an unknown order all end
     before the PDP. Each still writes an audit event, and none writes money."""

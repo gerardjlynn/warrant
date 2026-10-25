@@ -100,13 +100,24 @@ def _authorize(claims: dict, request_id: str, action: str, resource: str,
     and adds no check."""
     delegation, unresolved, grant_state = _resolve_delegation(
         claims, account_id, required_scope)
-    policy_checks, latency_ms = pdp.batch_check(
-        rep=claims["preferred_username"],
-        agent=claims["azp"],
-        account=account_id,
-        delegation=delegation,
-        amount_cents=amount_cents,
-    )
+    try:
+        policy_checks, latency_ms = pdp.batch_check(
+            rep=claims["preferred_username"],
+            agent=claims["azp"],
+            account=account_id,
+            delegation=delegation,
+            amount_cents=amount_cents,
+        )
+    except pdp.PDPUnavailable:
+        # No decision was made, so nothing is allowed: deny, and say why.
+        event = _base_event(request_id, claims, action, resource, required_scope)
+        event.update(delegation_id=delegation, account_id=account_id,
+                     amount_cents=amount_cents, decision="deny",
+                     reason="pdp_unavailable", policy_checks=None,
+                     token_valid_at_decision=True,
+                     grant_state_at_decision=grant_state)
+        audit(**event)
+        raise ToolDenied(503, "pdp_unavailable")
     decision, reason, decisive = pdp.decide(policy_checks, action)
     if unresolved and decisive != "rep_assigned":
         # No delegation applies. Deny and say so -- unless check 1 already gave

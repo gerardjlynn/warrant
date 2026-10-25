@@ -23,6 +23,11 @@ DENY_REASONS = {
 }
 
 
+class PDPUnavailable(Exception):
+    """OpenFGA gave no usable answer: unreachable, an error status (a missing
+    store is a 400), or a malformed body. The caller must deny."""
+
+
 def batch_check(rep: str, agent: str, account: str, delegation: str,
                 amount_cents: int | None = None) -> tuple[dict, float]:
     """Returns ({check_name: bool}, authz_latency_ms)."""
@@ -51,15 +56,19 @@ def batch_check(rep: str, agent: str, account: str, delegation: str,
         names["c5"] = "refund_within_cap"
 
     t0 = time.perf_counter()
-    r = requests.post(
-        f"{FGA_URL}/stores/{FGA_STORE_ID}/batch-check",
-        json={"checks": checks,
-              "authorization_model_id": FGA_MODEL_ID,
-              "consistency": "HIGHER_CONSISTENCY"},
-    )
-    r.raise_for_status()
+    try:
+        r = requests.post(
+            f"{FGA_URL}/stores/{FGA_STORE_ID}/batch-check",
+            json={"checks": checks,
+                  "authorization_model_id": FGA_MODEL_ID,
+                  "consistency": "HIGHER_CONSISTENCY"},
+            timeout=5,
+        )
+        r.raise_for_status()
+        result = r.json()["result"]
+    except (requests.RequestException, ValueError, KeyError) as e:
+        raise PDPUnavailable(str(e)) from e
     latency_ms = round((time.perf_counter() - t0) * 1000, 1)
-    result = r.json()["result"]
     policy_checks = {names[cid]: bool(result.get(cid, {}).get("allowed"))
                      for cid in names}
     return policy_checks, latency_ms
