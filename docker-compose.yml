@@ -10,8 +10,42 @@ services:
     volumes:
       - ./keycloak/realm-warrant.json:/opt/keycloak/data/import/realm-warrant.json:ro
 
+  # OpenFGA's default datastore is in memory: a container restart loses the
+  # store, and every check then fails. Postgres keeps it across restarts;
+  # `make down` (-v) still wipes it.
+  openfga-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: openfga
+      POSTGRES_PASSWORD: openfga
+      POSTGRES_DB: openfga
+    volumes:
+      - openfga-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U openfga"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  openfga-migrate:
+    image: openfga/openfga:v1.8.13
+    command: ["migrate"]
+    environment: &openfga-datastore
+      OPENFGA_DATASTORE_ENGINE: postgres
+      OPENFGA_DATASTORE_URI: postgres://openfga:openfga@openfga-db:5432/openfga?sslmode=disable
+    depends_on:
+      openfga-db:
+        condition: service_healthy
+
   openfga:
     image: openfga/openfga:v1.8.13
     command: ["run", "--check-query-cache-enabled=false"]
+    environment: *openfga-datastore
     ports:
       - "127.0.0.1:8081:8080"
+    depends_on:
+      openfga-migrate:
+        condition: service_completed_successfully
+
+volumes:
+  openfga-data:
