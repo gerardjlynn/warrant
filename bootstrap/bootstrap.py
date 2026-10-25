@@ -275,7 +275,11 @@ def ensure_register_clients(token: str) -> None:
                redirectUris=[f"{SURFACE_URL}/surface/callback"],
                webOrigins=[SURFACE_URL],
                attributes={**rep.get("attributes", {}),
-                           "pkce.code.challenge.method": "S256"})
+                           "pkce.code.challenge.method": "S256",
+                           # Where Keycloak may send the browser after the
+                           # surface's sign-out ends the Keycloak session.
+                           "post.logout.redirect.uris":
+                               f"{SURFACE_URL}/surface"})
     admin("PUT", f"/clients/{client['id']}", token, json=rep)
 
     uuid = client["id"]

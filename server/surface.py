@@ -50,6 +50,7 @@ SURFACE_URL = "http://localhost:8090"
 REDIRECT_URI = f"{SURFACE_URL}/surface/callback"
 AUTHORIZE = f"{ISSUER}/protocol/openid-connect/auth"
 TOKEN = f"{ISSUER}/protocol/openid-connect/token"
+END_SESSION = f"{ISSUER}/protocol/openid-connect/logout"
 
 # Sessions live in memory, like the order store: this is one process serving a
 # demonstration. The access token stays here and never goes into a cookie, so
@@ -118,8 +119,15 @@ def callback(code: str = "", state: str = ""):
 
 @router.get("/logout")
 def logout(request: Request):
+    """End this surface's session and Keycloak's. Dropping only ours would
+    leave Keycloak signed in, and the next sign-in would come straight back as
+    the same person -- no way to hand the browser to the other grantor."""
     SESSIONS.pop(request.cookies.get("sid", ""), None)
-    response = RedirectResponse("/surface", status_code=303)
+    query = urllib.parse.urlencode({
+        "client_id": GRANTOR_CLIENT_ID,
+        "post_logout_redirect_uri": f"{SURFACE_URL}/surface",
+    })
+    response = RedirectResponse(f"{END_SESSION}?{query}", status_code=303)
     response.delete_cookie("sid")
     return response
 

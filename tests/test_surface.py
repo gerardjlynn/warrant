@@ -56,6 +56,19 @@ def test_signed_out_is_asked_to_sign_in(app):
     assert "/surface/login" not in page or "sign" in page.lower()
 
 
+def test_sign_out_ends_the_keycloak_session_too(app):
+    """Otherwise the next sign-in comes straight back as the same person, and
+    one browser can never be handed from Bob to Alice."""
+    client, _ = app
+    sign_in(client, BOB)
+    assert "sign out" in client.get("/surface").text
+    r = client.get("/surface/logout", follow_redirects=False)
+    assert r.status_code == 303
+    assert r.headers["location"].startswith(surface.END_SESSION + "?")
+    assert "post_logout_redirect_uri=" in r.headers["location"]
+    assert "sid-" + BOB not in surface.SESSIONS
+
+
 def test_you_see_the_grants_that_name_you_and_not_the_others(app):
     client, reg = app
     propose(reg, {"op": "all_of", "grantors": [ALICE, BOB]}, grant_id="dlg-1")
