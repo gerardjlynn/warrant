@@ -78,6 +78,17 @@ def test_you_see_the_grants_that_name_you_and_not_the_others(app):
     assert "dlg-1" in page and "dlg-2" not in page
 
 
+def test_the_live_call_panel_is_only_for_people_the_grant_names(app):
+    client, reg = app
+    propose(reg, {"op": "all_of", "grantors": [ALICE, BOB]}, grant_id="dlg-1")
+    assert client.get("/surface/grants/dlg-1/decisions").status_code == 401
+    r = sign_in(client, BOB).get("/surface/grants/dlg-1/decisions")
+    assert r.status_code == 200
+    assert r.json()["state"] == PENDING and r.json()["authority"] is False
+    r = sign_in(client, CAROL).get("/surface/grants/dlg-1/decisions")
+    assert r.status_code == 403
+
+
 def test_the_list_says_who_is_still_being_waited_on(app):
     client, reg = app
     rev = propose(reg, {"op": "all_of", "grantors": [ALICE, BOB]}, grant_id="dlg-1")

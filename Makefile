@@ -1,4 +1,4 @@
-.PHONY: up bootstrap token test down surface walkthrough try-refund
+.PHONY: up bootstrap token test down surface walkthrough try-refund console
 
 VENV = .venv/bin
 
@@ -28,6 +28,10 @@ surface: $(VENV)/python
 	@echo "authoring surface: http://localhost:8090/surface"
 	@echo "sign in as rep-alice/alice or rep-bob/bob"
 	$(VENV)/uvicorn server.app:app --port 8090
+
+console: $(VENV)/python
+	@echo "agent console: http://localhost:8092 (starts the MCP tool server if needed)"
+	$(VENV)/python agent/console.py
 
 mcp-server: $(VENV)/python
 	$(VENV)/python -m server.mcp_app

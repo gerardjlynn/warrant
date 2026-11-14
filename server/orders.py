@@ -5,6 +5,13 @@ ORDERS = {
              "refunded_cents": 0, "status": "shipped"},
     "2077": {"order_id": "2077", "account_id": "acme", "total_cents": 95000,
              "refunded_cents": 0, "status": "shipped"},
+    # The agent console's ticket queue works these as well.
+    "1043": {"order_id": "1043", "account_id": "acme", "total_cents": 6000,
+             "refunded_cents": 0, "status": "delivered late"},
+    "1044": {"order_id": "1044", "account_id": "acme", "total_cents": 12000,
+             "refunded_cents": 0, "status": "shipped"},
+    "1045": {"order_id": "1045", "account_id": "acme", "total_cents": 8000,
+             "refunded_cents": 0, "status": "shipped"},
     "3001": {"order_id": "3001", "account_id": "globex", "total_cents": 30000,
              "refunded_cents": 0, "status": "shipped"},
 }

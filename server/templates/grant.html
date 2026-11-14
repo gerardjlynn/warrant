@@ -69,7 +69,7 @@
   </div>
 </div>
 
-{% if decisions %}
+<div id="calls"{% if not decisions %} hidden{% endif %}>
 <h2>What the agent's calls got</h2>
 <table class="calls">
   <tr><th>call</th><th>decision</th><th>grant was</th></tr>
@@ -81,9 +81,35 @@
   </tr>
   {% endfor %}
 </table>
-<p class="note">From the call log. This page cannot make such a call — it holds
-your token, never the agent's.</p>
-{% endif %}
+<p class="note">From the call log, refreshed while you watch. This page cannot
+make such a call — it holds your token, never the agent's.</p>
+</div>
+<script>
+// While an agent works in its own console, show its calls arriving here. If
+// the grant's state moved -- someone else answered -- reload for the full page.
+(function () {
+  const shown = {{ state|tojson }};
+  const box = document.getElementById('calls');
+  const table = box.querySelector('table');
+  setInterval(async () => {
+    const r = await fetch({{ ('/surface/grants/' ~ grant_id ~ '/decisions')|tojson }});
+    if (!r.ok) return;
+    const v = await r.json();
+    if (v.state !== shown) { location.reload(); return; }
+    const rows = v.decisions.map(d => {
+      const tr = document.createElement('tr');
+      for (const [text, cls] of [[d.action, 'mono'],
+          [d.reason, d.decision === 'allow' ? 'allow' : 'deny'], [d.state, '']]) {
+        const td = document.createElement('td');
+        td.textContent = text; if (cls) td.className = cls; tr.append(td);
+      }
+      return tr;
+    });
+    table.replaceChildren(table.rows[0], ...rows);
+    box.hidden = rows.length === 0;
+  }, 2000);
+})();
+</script>
 
 <h2>The record</h2>
 {% if standing %}

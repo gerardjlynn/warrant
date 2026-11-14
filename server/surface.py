@@ -34,7 +34,7 @@ from pathlib import Path
 
 import requests
 from fastapi import APIRouter, Form, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from .auth import GrantorAuthError, validate_grantor
@@ -300,6 +300,24 @@ def grant(grant_id: str, request: Request, notice: str = "", deny: str = ""):
         request, "grant.html",
         {**view, "username": session["username"],
          "notice": notice, "notice_deny": bool(deny)})
+
+
+@router.get("/grants/{grant_id}/decisions")
+def decisions(grant_id: str, request: Request):
+    """The agent's recent calls against this grant, for the page to refresh
+    while an agent is working. Read-only, from the call log, like the panel it
+    feeds -- and only to someone the grant names."""
+    session = _session(request)
+    if session is None:
+        return JSONResponse({"error": "signed out"}, status_code=401)
+    try:
+        view = _grant_view(grant_id, session["username"])
+    except RegisterRejected as e:
+        return JSONResponse({"error": e.reason}, status_code=404)
+    if not view["roles"]:
+        return JSONResponse({"error": "not a party"}, status_code=403)
+    return {"state": view["state"], "authority": view["authority"],
+            "decisions": view["decisions"]}
 
 
 # ---------------- acting ----------------
